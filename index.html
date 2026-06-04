@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Puyo Browser</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="play-surface" aria-label="Puyo Browser game">
+        <div class="game-frame">
+          <canvas id="board" width="360" height="720" aria-label="game board"></canvas>
+          <div class="status-ribbon" id="status">READY</div>
+        </div>
+
+        <aside class="hud" aria-label="game status">
+          <div class="brand">
+            <span class="brand-mark"></span>
+            <h1>Puyo Browser</h1>
+          </div>
+
+          <div class="meter">
+            <span>SCORE</span>
+            <strong id="score">0</strong>
+          </div>
+          <div class="meter grid-two">
+            <div>
+              <span>CHAIN</span>
+              <strong id="chain">0</strong>
+            </div>
+            <div>
+              <span>LEVEL</span>
+              <strong id="level">1</strong>
+            </div>
+          </div>
+
+          <div class="next-box">
+            <span>NEXT</span>
+            <canvas id="next" width="160" height="180" aria-label="next pair"></canvas>
+          </div>
+
+          <div class="actions">
+            <button id="start" class="primary" title="Start" aria-label="Start">▶</button>
+            <button id="pause" title="Pause" aria-label="Pause">Ⅱ</button>
+            <button id="restart" title="Restart" aria-label="Restart">↻</button>
+          </div>
+
+          <div class="mobile-pad" aria-label="touch controls">
+            <button data-action="left" title="Left" aria-label="Left">←</button>
+            <button data-action="rotate" title="Rotate" aria-label="Rotate">⟳</button>
+            <button data-action="right" title="Right" aria-label="Right">→</button>
+            <button data-action="down" title="Soft drop" aria-label="Soft drop">↓</button>
+            <button data-action="drop" class="wide" title="Hard drop" aria-label="Hard drop">⇣</button>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="./game.js" type="module"></script>
+  </body>
+</html>
