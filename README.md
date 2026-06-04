@@ -22,4 +22,5 @@ Features:
 - four-or-more connected clear rule
 - gravity and chain resolution
 - score, chain, level, next-pair HUD
+- high score saved in the current browser
 - keyboard and touch controls

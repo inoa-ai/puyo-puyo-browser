@@ -175,9 +175,9 @@ h1 {
   line-height: 1;
 }
 
-.grid-two {
+.stat-strip {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -271,13 +271,8 @@ h1 {
     box-shadow: 0 3px 0 var(--line);
   }
 
-  .hud > .meter:not(.grid-two) {
-    grid-column: span 1;
-    order: 3;
-  }
-
-  .grid-two {
-    grid-column: span 2;
+  .stat-strip {
+    grid-column: 1 / -1;
     order: 3;
     gap: 6px;
   }

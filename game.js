@@ -5,6 +5,7 @@ const ROWS = VISIBLE_ROWS + HIDDEN_ROWS;
 const START_INTERVAL = 760;
 const MIN_INTERVAL = 250;
 const COLORS = ["red", "green", "blue", "yellow", "violet"];
+const HIGH_SCORE_KEY = "puyo-browser-high-score";
 const PUYO = {
   red: { fill: "#ef5c4f", shade: "#b72f2e" },
   green: { fill: "#22b99a", shade: "#147964" },
@@ -26,6 +27,7 @@ const nextCtx = nextCanvas.getContext("2d");
 
 const els = {
   score: document.querySelector("#score"),
+  highScore: document.querySelector("#high-score"),
   chain: document.querySelector("#chain"),
   level: document.querySelector("#level"),
   status: document.querySelector("#status"),
@@ -38,6 +40,7 @@ let board;
 let active;
 let queue;
 let score;
+let highScore;
 let chainDisplay;
 let level;
 let state;
@@ -92,11 +95,13 @@ function spawnPiece() {
   if (!canOccupy(active)) {
     active = null;
     state = "gameover";
+    saveHighScore();
     setStatus("GAME OVER");
   }
 }
 
 function resetGame() {
+  highScore = readHighScore();
   board = emptyBoard();
   active = null;
   queue = [randomPair(), randomPair(), randomPair()];
@@ -137,9 +142,31 @@ function setStatus(text) {
 }
 
 function updateHud() {
+  if (score > highScore) {
+    highScore = score;
+    saveHighScore();
+  }
   els.score.textContent = score.toLocaleString();
+  els.highScore.textContent = highScore.toLocaleString();
   els.chain.textContent = chainDisplay;
   els.level.textContent = level;
+}
+
+function readHighScore() {
+  try {
+    const stored = Number.parseInt(localStorage.getItem(HIGH_SCORE_KEY) ?? "0", 10);
+    return Number.isFinite(stored) && stored > 0 ? stored : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveHighScore() {
+  try {
+    localStorage.setItem(HIGH_SCORE_KEY, String(highScore));
+  } catch {
+    // Some private browsing modes disable storage. The game should still run.
+  }
 }
 
 function tryMove(dx, dy) {
