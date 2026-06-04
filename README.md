@@ -23,4 +23,10 @@ Features:
 - gravity and chain resolution
 - score, chain, level, next-pair HUD
 - high score saved in the current browser
+- shared ranking powered by Cloudflare Workers and D1
 - keyboard and touch controls
+
+Leaderboard API:
+
+- Worker: `https://puyo-puyo-leaderboard.inoa-ai.workers.dev`
+- D1 database: `puyo-puyo-leaderboard`

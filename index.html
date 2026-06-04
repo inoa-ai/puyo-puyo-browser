@@ -44,6 +44,28 @@
             <canvas id="next" width="160" height="180" aria-label="next pair"></canvas>
           </div>
 
+          <div class="leaderboard">
+            <div class="leaderboard-head">
+              <span>RANKING</span>
+              <button id="refresh-ranking" title="Refresh ranking" aria-label="Refresh ranking">
+                &#8635;
+              </button>
+            </div>
+            <ol id="leaderboard-list" class="leaderboard-list" aria-label="ranking"></ol>
+            <form id="score-form" class="score-form is-hidden">
+              <input
+                id="player-name"
+                name="name"
+                maxlength="16"
+                autocomplete="nickname"
+                placeholder="NAME"
+                aria-label="Player name"
+              />
+              <button type="submit">SEND</button>
+            </form>
+            <p id="leaderboard-status" class="leaderboard-status"></p>
+          </div>
+
           <div class="actions">
             <button id="start" class="primary" title="Start" aria-label="Start">&#9654;</button>
             <button id="pause" title="Pause" aria-label="Pause">&#10074;&#10074;</button>

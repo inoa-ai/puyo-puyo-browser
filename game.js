@@ -6,6 +6,8 @@ const START_INTERVAL = 760;
 const MIN_INTERVAL = 250;
 const COLORS = ["red", "green", "blue", "yellow", "violet"];
 const HIGH_SCORE_KEY = "puyo-browser-high-score";
+const PLAYER_NAME_KEY = "puyo-browser-player-name";
+const LEADERBOARD_API = "https://puyo-puyo-leaderboard.inoa-ai.workers.dev";
 const PUYO = {
   red: { fill: "#ef5c4f", shade: "#b72f2e" },
   green: { fill: "#22b99a", shade: "#147964" },
@@ -34,6 +36,11 @@ const els = {
   start: document.querySelector("#start"),
   pause: document.querySelector("#pause"),
   restart: document.querySelector("#restart"),
+  leaderboardList: document.querySelector("#leaderboard-list"),
+  leaderboardStatus: document.querySelector("#leaderboard-status"),
+  refreshRanking: document.querySelector("#refresh-ranking"),
+  scoreForm: document.querySelector("#score-form"),
+  playerName: document.querySelector("#player-name"),
 };
 
 let board;
@@ -47,6 +54,7 @@ let state;
 let dropTimer;
 let lastTime;
 let resolving;
+let pendingLeaderboardScore;
 
 function emptyBoard() {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
@@ -95,8 +103,7 @@ function spawnPiece() {
   if (!canOccupy(active)) {
     active = null;
     state = "gameover";
-    saveHighScore();
-    setStatus("GAME OVER");
+    handleGameOver();
   }
 }
 
@@ -112,6 +119,8 @@ function resetGame() {
   dropTimer = 0;
   lastTime = performance.now();
   resolving = false;
+  pendingLeaderboardScore = 0;
+  hideScoreForm();
   spawnPiece();
   state = "ready";
   setStatus("READY");
@@ -167,6 +176,114 @@ function saveHighScore() {
   } catch {
     // Some private browsing modes disable storage. The game should still run.
   }
+}
+
+function readPlayerName() {
+  try {
+    return localStorage.getItem(PLAYER_NAME_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function savePlayerName(name) {
+  try {
+    localStorage.setItem(PLAYER_NAME_KEY, name);
+  } catch {
+    // Player names are optional; storage may be disabled.
+  }
+}
+
+function handleGameOver() {
+  saveHighScore();
+  setStatus("GAME OVER");
+  if (score > 0) showScoreForm(score);
+}
+
+function showScoreForm(finalScore) {
+  pendingLeaderboardScore = finalScore;
+  els.playerName.value = readPlayerName();
+  els.scoreForm.classList.remove("is-hidden");
+  setLeaderboardStatus("NEW SCORE");
+}
+
+function hideScoreForm() {
+  pendingLeaderboardScore = 0;
+  els.scoreForm.classList.add("is-hidden");
+}
+
+function setLeaderboardStatus(text) {
+  els.leaderboardStatus.textContent = text;
+}
+
+async function loadLeaderboard() {
+  setLeaderboardStatus("LOADING");
+  try {
+    const response = await fetch(`${LEADERBOARD_API}/leaderboard`, { cache: "no-store" });
+    if (!response.ok) throw new Error("ranking load failed");
+    const data = await response.json();
+    renderLeaderboard(data.scores ?? []);
+    setLeaderboardStatus("");
+  } catch {
+    renderLeaderboard([]);
+    setLeaderboardStatus("OFFLINE");
+  }
+}
+
+function renderLeaderboard(scores) {
+  els.leaderboardList.innerHTML = "";
+
+  if (!scores.length) {
+    const item = document.createElement("li");
+    item.className = "empty-rank";
+    item.textContent = "NO SCORES";
+    els.leaderboardList.append(item);
+    return;
+  }
+
+  scores.forEach((entry, index) => {
+    const item = document.createElement("li");
+    const rank = document.createElement("span");
+    const name = document.createElement("span");
+    const value = document.createElement("span");
+
+    rank.textContent = `${index + 1}`;
+    name.textContent = entry.name;
+    value.textContent = Number(entry.score).toLocaleString();
+
+    item.append(rank, name, value);
+    els.leaderboardList.append(item);
+  });
+}
+
+async function submitLeaderboardScore(event) {
+  event.preventDefault();
+  if (!pendingLeaderboardScore) return;
+
+  const name = normalizePlayerName(els.playerName.value);
+  els.playerName.value = name;
+  savePlayerName(name);
+  setLeaderboardStatus("SENDING");
+
+  try {
+    const response = await fetch(`${LEADERBOARD_API}/scores`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name, score: pendingLeaderboardScore }),
+    });
+    if (!response.ok) throw new Error("score submit failed");
+    const data = await response.json();
+    renderLeaderboard(data.scores ?? []);
+    hideScoreForm();
+    setLeaderboardStatus("SENT");
+  } catch {
+    setLeaderboardStatus("TRY AGAIN");
+  }
+}
+
+function normalizePlayerName(value) {
+  const name = value.replace(/\s+/g, " ").trim().slice(0, 16);
+  return name || "PLAYER";
 }
 
 function tryMove(dx, dy) {
@@ -519,6 +636,8 @@ els.restart.addEventListener("click", () => {
   resetGame();
   startGame();
 });
+els.refreshRanking.addEventListener("click", loadLeaderboard);
+els.scoreForm.addEventListener("submit", submitLeaderboardScore);
 
 document.querySelectorAll("[data-action]").forEach((button) => {
   const run = () => handleAction(button.dataset.action);
@@ -528,4 +647,5 @@ document.querySelectorAll("[data-action]").forEach((button) => {
 window.addEventListener("resize", draw);
 
 resetGame();
+loadLeaderboard();
 requestAnimationFrame(tick);

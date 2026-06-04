@@ -1,0 +1,14 @@
+{
+  "name": "puyo-puyo-leaderboard",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-04",
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "puyo-puyo-leaderboard",
+      "database_id": "4d978933-f8cb-44c9-94c8-a3ee9e21a0fc"
+    }
+  ]
+}
