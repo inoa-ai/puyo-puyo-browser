@@ -464,7 +464,7 @@ function drawNext() {
   nextCtx.clearRect(0, 0, width, height);
   const pair = queue[0];
   if (!pair) return;
-  const size = Math.min(width * 0.34, height * 0.34, 58);
+  const size = Math.min(width * 0.62, height * 0.34, 58);
   const x = width / 2 - size / 2;
   const y = height / 2 - size * 0.92;
   drawPuyo(nextCtx, x, y, size, pair.child);

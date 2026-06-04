@@ -234,14 +234,22 @@ h1 {
   }
 
   .play-surface {
-    grid-template-columns: 1fr;
-    max-width: 410px;
-    gap: 10px;
-    justify-items: center;
+    grid-template-columns: minmax(0, 1fr) 70px;
+    grid-template-areas:
+      "board next"
+      "actions actions"
+      "pad pad"
+      "stats stats";
+    justify-content: center;
+    align-items: start;
+    max-width: 420px;
+    gap: 8px;
   }
 
   .game-frame {
-    width: min(100%, 330px, max(220px, calc((100svh - 252px) / 2)));
+    grid-area: board;
+    justify-self: end;
+    width: min(100%, 318px, max(210px, calc((100svh - 262px) / 2)));
     border-width: 3px;
     box-shadow: 0 10px 24px rgba(22, 35, 41, 0.18);
   }
@@ -255,10 +263,7 @@ h1 {
   }
 
   .hud {
-    width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: auto;
-    gap: 8px;
+    display: contents;
   }
 
   .brand {
@@ -272,7 +277,7 @@ h1 {
   }
 
   .stat-strip {
-    grid-column: 1 / -1;
+    grid-area: stats;
     order: 3;
     gap: 6px;
   }
@@ -290,22 +295,25 @@ h1 {
 
   .next-box {
     display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    grid-column: 1 / -1;
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    justify-items: center;
+    grid-area: next;
     order: 4;
-    min-height: 70px;
-    padding: 8px 10px;
+    width: 70px;
+    min-height: 132px;
+    padding: 8px 5px;
     border-width: 2px;
     box-shadow: 0 3px 0 var(--line);
   }
 
   #next {
-    height: 58px;
+    width: 100%;
+    height: 96px;
   }
 
   .actions {
-    grid-column: 1 / -1;
+    grid-area: actions;
     order: 1;
     grid-template-columns: 1.2fr 1fr 1fr;
     gap: 8px;
@@ -318,7 +326,7 @@ h1 {
   }
 
   .mobile-pad {
-    grid-column: 1 / -1;
+    grid-area: pad;
     order: 2;
     width: 100%;
     grid-template-columns: repeat(3, minmax(0, 1fr));
