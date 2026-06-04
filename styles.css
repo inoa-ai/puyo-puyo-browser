@@ -45,6 +45,8 @@ button {
   cursor: pointer;
   font: 800 1.15rem/1 system-ui, sans-serif;
   box-shadow: 0 4px 0 var(--line);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   transition:
     transform 120ms ease,
     box-shadow 120ms ease,
@@ -212,7 +214,6 @@ h1 {
 
 .mobile-pad button {
   min-height: 58px;
-  touch-action: manipulation;
 }
 
 .mobile-pad .wide {
@@ -222,50 +223,145 @@ h1 {
 }
 
 @media (max-width: 760px) {
+  body {
+    overscroll-behavior-y: contain;
+  }
+
   .app-shell {
     align-items: start;
+    min-height: 100svh;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
   }
 
   .play-surface {
     grid-template-columns: 1fr;
-    max-width: 430px;
+    max-width: 410px;
+    gap: 10px;
+    justify-items: center;
+  }
+
+  .game-frame {
+    width: min(100%, 330px, max(220px, calc((100svh - 252px) / 2)));
+    border-width: 3px;
+    box-shadow: 0 10px 24px rgba(22, 35, 41, 0.18);
+  }
+
+  .status-ribbon {
+    top: 8px;
+    min-width: 88px;
+    padding: 6px 9px;
+    font-size: 0.66rem;
+    box-shadow: 0 3px 0 var(--line);
   }
 
   .hud {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: auto;
+    gap: 8px;
   }
 
   .brand {
-    justify-content: center;
+    display: none;
   }
 
   .meter {
-    padding: 12px 14px;
+    padding: 8px 10px;
+    border-width: 2px;
+    box-shadow: 0 3px 0 var(--line);
+  }
+
+  .hud > .meter:not(.grid-two) {
+    grid-column: span 1;
+    order: 3;
+  }
+
+  .grid-two {
+    grid-column: span 2;
+    order: 3;
+    gap: 6px;
+  }
+
+  .meter span,
+  .next-box span {
+    font-size: 0.62rem;
+    margin-bottom: 4px;
+  }
+
+  .meter strong {
+    min-height: 24px;
+    font-size: 1.32rem;
   }
 
   .next-box {
-    min-height: 130px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    grid-column: 1 / -1;
+    order: 4;
+    min-height: 70px;
+    padding: 8px 10px;
+    border-width: 2px;
+    box-shadow: 0 3px 0 var(--line);
   }
 
   #next {
-    height: 120px;
+    height: 58px;
+  }
+
+  .actions {
+    grid-column: 1 / -1;
+    order: 1;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 8px;
+  }
+
+  .actions button {
+    min-height: 46px;
+    font-size: 1rem;
+    box-shadow: 0 3px 0 var(--line);
+  }
+
+  .mobile-pad {
+    grid-column: 1 / -1;
+    order: 2;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0;
+  }
+
+  .mobile-pad button {
+    min-height: 52px;
+    font-size: 1.18rem;
+    box-shadow: 0 3px 0 var(--line);
+  }
+
+  .mobile-pad .wide {
+    grid-column: span 2;
   }
 }
 
 @media (max-width: 390px) {
   .app-shell {
-    padding: 10px;
+    padding-left: 8px;
+    padding-right: 8px;
   }
 
   .play-surface {
-    gap: 12px;
+    gap: 8px;
   }
 
   button {
     border-radius: 7px;
   }
 
+  .actions,
+  .mobile-pad {
+    gap: 7px;
+  }
+
   .mobile-pad button {
-    min-height: 52px;
+    min-height: 48px;
   }
 }
