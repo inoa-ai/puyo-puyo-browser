@@ -12,6 +12,7 @@ const CLEAR_ANIMATION_MS = 260;
 const FALL_ANIMATION_BASE_MS = 360;
 const FALL_ANIMATION_PER_ROW_MS = 95;
 const FALL_ANIMATION_MAX_MS = 980;
+const CHAIN_POWER = [0, 0, 8, 16, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, 480, 512];
 const PUYO = {
   red: { fill: "#ef5c4f", shade: "#b72f2e" },
   green: { fill: "#22b99a", shade: "#147964" },
@@ -349,7 +350,7 @@ async function resolveBoard() {
     chain += 1;
     chainDisplay = chain;
     const cleared = groups.reduce((sum, group) => sum + group.length, 0);
-    score += cleared * 10 * chain + Math.max(0, groups.length - 1) * 40;
+    score += calculateClearScore(cleared, groups.length, chain);
     level = Math.max(1, Math.floor(score / 1200) + 1);
     updateHud();
     await animateClear(groups);
@@ -370,6 +371,20 @@ async function resolveBoard() {
     if (state === "running") setStatus("GO");
     draw();
   }
+}
+
+function calculateClearScore(cleared, groupCount, chain) {
+  const base = cleared * 10;
+  const bonus = Math.max(1, chainBonus(chain) + groupBonus(groupCount));
+  return base * bonus;
+}
+
+function chainBonus(chain) {
+  return CHAIN_POWER[Math.min(chain, CHAIN_POWER.length - 1)];
+}
+
+function groupBonus(groupCount) {
+  return Math.max(0, groupCount - 1) * 2;
 }
 
 function findClearGroups() {
