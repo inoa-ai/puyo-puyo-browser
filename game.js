@@ -8,6 +8,10 @@ const COLORS = ["red", "green", "blue", "yellow", "violet"];
 const HIGH_SCORE_KEY = "puyo-browser-high-score";
 const PLAYER_NAME_KEY = "puyo-browser-player-name";
 const LEADERBOARD_API = "https://puyo-puyo-leaderboard.inoa-ai.workers.dev";
+const CLEAR_ANIMATION_MS = 260;
+const FALL_ANIMATION_BASE_MS = 360;
+const FALL_ANIMATION_PER_ROW_MS = 95;
+const FALL_ANIMATION_MAX_MS = 980;
 const PUYO = {
   red: { fill: "#ef5c4f", shade: "#b72f2e" },
   green: { fill: "#22b99a", shade: "#147964" },
@@ -55,6 +59,9 @@ let dropTimer;
 let lastTime;
 let resolving;
 let pendingLeaderboardScore;
+let clearAnimation;
+let clearingCells;
+let fallingPuyos;
 
 function emptyBoard() {
   return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
@@ -120,6 +127,9 @@ function resetGame() {
   lastTime = performance.now();
   resolving = false;
   pendingLeaderboardScore = 0;
+  clearAnimation = null;
+  clearingCells = new Set();
+  fallingPuyos = [];
   hideScoreForm();
   spawnPiece();
   state = "ready";
@@ -331,10 +341,7 @@ async function resolveBoard() {
   resolving = true;
   let chain = 0;
 
-  if (applyGravity()) {
-    draw();
-    await wait(120);
-  }
+  await animateGravity();
 
   while (true) {
     const groups = findClearGroups();
@@ -345,13 +352,9 @@ async function resolveBoard() {
     score += cleared * 10 * chain + Math.max(0, groups.length - 1) * 40;
     level = Math.max(1, Math.floor(score / 1200) + 1);
     updateHud();
-    markClear(groups);
-    draw();
-    await wait(170);
+    await animateClear(groups);
     clearMarked();
-    const fell = applyGravity();
-    draw();
-    await wait(fell ? 150 : 80);
+    await animateGravity();
   }
 
   if (chain > 1) {
@@ -376,7 +379,7 @@ function findClearGroups() {
   for (let y = 0; y < ROWS; y += 1) {
     for (let x = 0; x < COLS; x += 1) {
       const color = board[y][x];
-      if (!color || color === "clear" || seen[y][x]) continue;
+      if (!color || seen[y][x]) continue;
       const group = [];
       const stack = [{ x, y }];
       seen[y][x] = true;
@@ -401,23 +404,42 @@ function findClearGroups() {
 }
 
 function markClear(groups) {
+  clearingCells = new Set();
   for (const group of groups) {
     for (const { x, y } of group) {
-      board[y][x] = "clear";
+      clearingCells.add(cellKey(x, y));
     }
   }
+}
+
+async function animateClear(groups) {
+  markClear(groups);
+  const startedAt = performance.now();
+
+  while (true) {
+    const elapsed = performance.now() - startedAt;
+    clearAnimation = {
+      progress: Math.min(1, elapsed / CLEAR_ANIMATION_MS),
+    };
+    draw();
+    if (clearAnimation.progress >= 1) break;
+    await nextFrame();
+  }
+
+  clearAnimation = null;
 }
 
 function clearMarked() {
-  for (let y = 0; y < ROWS; y += 1) {
-    for (let x = 0; x < COLS; x += 1) {
-      if (board[y][x] === "clear") board[y][x] = null;
-    }
+  for (const key of clearingCells) {
+    const [x, y] = key.split(":").map(Number);
+    board[y][x] = null;
   }
+  clearingCells.clear();
 }
 
-function applyGravity() {
-  let moved = false;
+function settleGravity() {
+  const drops = [];
+
   for (let x = 0; x < COLS; x += 1) {
     const settled = Array(ROWS).fill(null);
     let writeY = ROWS - 1;
@@ -425,7 +447,14 @@ function applyGravity() {
     for (let y = ROWS - 1; y >= 0; y -= 1) {
       if (!board[y][x]) continue;
       settled[writeY] = board[y][x];
-      if (writeY !== y) moved = true;
+      if (writeY !== y) {
+        drops.push({
+          x,
+          fromY: y,
+          toY: writeY,
+          color: board[y][x],
+        });
+      }
       writeY -= 1;
     }
 
@@ -434,11 +463,47 @@ function applyGravity() {
     }
   }
 
-  return moved;
+  return drops;
+}
+
+async function animateGravity() {
+  const drops = settleGravity();
+  if (!drops.length) return false;
+
+  fallingPuyos = drops;
+  const startedAt = performance.now();
+  const maxDrop = Math.max(...drops.map((drop) => drop.toY - drop.fromY));
+  const duration = Math.min(FALL_ANIMATION_MAX_MS, FALL_ANIMATION_BASE_MS + maxDrop * FALL_ANIMATION_PER_ROW_MS);
+
+  while (true) {
+    const elapsed = performance.now() - startedAt;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = easeInOutCubic(progress);
+    fallingPuyos = drops.map((drop) => ({
+      ...drop,
+      yOffset: (drop.fromY - drop.toY) * (1 - eased),
+    }));
+    draw();
+    if (progress >= 1) break;
+    await nextFrame();
+  }
+
+  fallingPuyos = [];
+  draw();
+  await wait(90);
+  return true;
 }
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function nextFrame() {
+  return new Promise((resolve) => requestAnimationFrame(resolve));
+}
+
+function easeInOutCubic(value) {
+  return value < 0.5 ? 4 * value ** 3 : 1 - Math.pow(-2 * value + 2, 3) / 2;
 }
 
 function tick(now) {
@@ -491,9 +556,19 @@ function drawBoard() {
       const px = offsetX + x * cell;
       const py = offsetY + y * cell;
       drawCellSlot(boardCtx, px, py, cell);
-      const color = board[y + HIDDEN_ROWS][x];
-      if (color) drawPuyo(boardCtx, px, py, cell, color, color === "clear");
+      const boardY = y + HIDDEN_ROWS;
+      const color = board[boardY][x];
+      if (color && !isFallingTarget(x, boardY)) {
+        drawPuyo(boardCtx, px, py, cell, color, isClearingCell(x, boardY));
+      }
     }
+  }
+
+  for (const puyo of fallingPuyos) {
+    if (puyo.toY < HIDDEN_ROWS) continue;
+    const px = offsetX + puyo.x * cell;
+    const py = offsetY + (puyo.toY - HIDDEN_ROWS + puyo.yOffset) * cell;
+    drawPuyo(boardCtx, px, py, cell, puyo.color);
   }
 
   if (active) {
@@ -503,6 +578,18 @@ function drawBoard() {
       drawPuyo(boardCtx, offsetX + x * cell, offsetY + (y - HIDDEN_ROWS) * cell, cell, color);
     }
   }
+}
+
+function isFallingTarget(x, y) {
+  return fallingPuyos.some((puyo) => puyo.x === x && puyo.toY === y);
+}
+
+function isClearingCell(x, y) {
+  return clearingCells.has(cellKey(x, y));
+}
+
+function cellKey(x, y) {
+  return `${x}:${y}`;
 }
 
 function drawCellSlot(ctx, x, y, size) {
@@ -532,34 +619,59 @@ function drawGhost(ctx, offsetX, offsetY, cell) {
 
 function drawPuyo(ctx, x, y, size, color, clearing = false) {
   const palette = PUYO[color] ?? { fill: "#ffffff", shade: "#f5bd38" };
-  const pad = size * 0.09;
-  const body = size - pad * 2;
+  const clearProgress = clearing ? (clearAnimation?.progress ?? 0) : 0;
+  const pulse = clearing ? Math.sin(clearProgress * Math.PI * 3) * 0.12 : 0;
+  const scale = clearing ? Math.max(0.08, 1 + pulse - clearProgress * 0.82) : 1;
+  const scaledSize = size * scale;
+  const drawX = x + (size - scaledSize) / 2;
+  const drawY = y + (size - scaledSize) / 2;
+  const pad = scaledSize * 0.09;
+  const body = scaledSize - pad * 2;
   ctx.save();
   if (clearing) {
-    ctx.globalAlpha = 0.68 + Math.sin(performance.now() / 45) * 0.22;
+    ctx.globalAlpha = Math.max(0, 1 - clearProgress * 0.72);
   }
   ctx.fillStyle = "rgba(0,0,0,0.2)";
-  roundedRect(ctx, x + pad * 1.3, y + pad * 1.55, body, body, size * 0.32);
+  roundedRect(ctx, drawX + pad * 1.3, drawY + pad * 1.55, body, body, scaledSize * 0.32);
   ctx.fill();
   const grad = ctx.createRadialGradient(
-    x + size * 0.38,
-    y + size * 0.3,
-    size * 0.08,
-    x + size * 0.5,
-    y + size * 0.55,
-    size * 0.5,
+    drawX + scaledSize * 0.38,
+    drawY + scaledSize * 0.3,
+    scaledSize * 0.08,
+    drawX + scaledSize * 0.5,
+    drawY + scaledSize * 0.55,
+    scaledSize * 0.5,
   );
   grad.addColorStop(0, "#ffffff");
   grad.addColorStop(0.18, palette.fill);
   grad.addColorStop(1, palette.shade);
   ctx.fillStyle = grad;
-  roundedRect(ctx, x + pad, y + pad, body, body, size * 0.34);
+  roundedRect(ctx, drawX + pad, drawY + pad, body, body, scaledSize * 0.34);
   ctx.fill();
-  ctx.lineWidth = Math.max(2, size * 0.055);
+  ctx.lineWidth = Math.max(2, scaledSize * 0.055);
   ctx.strokeStyle = "rgba(255,255,255,0.55)";
   ctx.stroke();
-  drawFace(ctx, x, y, size);
+  drawFace(ctx, drawX, drawY, scaledSize);
+  if (clearing) drawClearSpark(ctx, x, y, size, clearProgress);
   ctx.restore();
+}
+
+function drawClearSpark(ctx, x, y, size, progress) {
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+  const radius = size * (0.16 + progress * 0.34);
+  ctx.globalAlpha = Math.max(0, 0.65 - progress * 0.65);
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = Math.max(1.2, size * 0.035);
+
+  for (let i = 0; i < 6; i += 1) {
+    const angle = (Math.PI * 2 * i) / 6 + progress * 1.6;
+    const inner = radius * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(centerX + Math.cos(angle) * inner, centerY + Math.sin(angle) * inner);
+    ctx.lineTo(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+    ctx.stroke();
+  }
 }
 
 function drawFace(ctx, x, y, size) {
